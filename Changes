@@ -1,0 +1,6 @@
+Revision history for Perl extension GPS::Lowrance::Trail.
+
+0.10  Fri Feb  1 21:18:29 2002
+	- original version; created by h2xs 1.21 with options
+		-X -v0.10 -b5.5.0 -n GPS::Lowrance::Trail
+
