@@ -8,7 +8,7 @@ use Geo::Coordinates::DecimalDegrees;
 use Geo::Coordinates::UTM;
 use XML::Generator qw();
 
-our $VERSION = '0.42';
+our $VERSION = '0.43';
 
 use constant DEFAULT_DATUM => 23;       # WGS-84
 
@@ -214,7 +214,7 @@ sub read_latlon
     #   Value of <HANDLE> construct can be "0"; test with defined"
     # We already tested $fh and know it's ok.
 
-    while ( ($line = <$fh>) && ($line !~ m/^END/) )
+    while ( (defined ($line = <$fh>)) && ($line !~ m/^END/) )
       {
 	chomp( $line );
 
@@ -259,7 +259,7 @@ sub read_utm
     #   Value of <HANDLE> construct can be "0"; test with defined"
     # We already tested $fh and know it's ok.
 
-    while ( ($line = <$fh>) && ($line !~ m/^END/) )
+    while ( (defined ($line = <$fh>)) && ($line !~ m/^END/) )
       {
 	if (substr($line, 0, 1) ne ";") {
 	  chomp( $line );

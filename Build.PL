@@ -14,7 +14,8 @@ my $build = Module::Build->new
      },
      recommends => {
      },
-     autosplit => [qw( lib/GPS/Lowrance/Trail.pm )],
+  # CPANPLUS cannot handle autosplit being an array!
+     autosplit => 'lib/GPS/Lowrance/Trail.pm',
      create_makefile_pl => 'traditional',
      dist_author        => 'Robert Rothenberg <rrwo at cpan.org>',
 );

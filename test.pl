@@ -1,7 +1,7 @@
 
 use Test;
 BEGIN { plan tests => 8 };
-use GPS::Lowrance::Trail 0.41;
+use GPS::Lowrance::Trail 0.43;
 ok(1);
 
 my $trail = new GPS::Lowrance::Trail( rounding => 0 );
@@ -24,6 +24,8 @@ ok( @$ref == $trail->size );
 
 # We need to test the conversions, although rounding errors could be
 # problematic.
+
+exit 0;
 
 __END__
 

@@ -1,6 +1,10 @@
 Revision history for Perl extension GPS::Lowrance::Trail.  (Node: issues
 which may affect backward-compatability are notes with asterisks "*".)
 
+0.43 27 April 2004
+	- removed warning about filehandle being '0'
+	- fixed autosplit in Build.PL to work with CPANPLUS
+
 0.42  8 April 2004
 	- added Build.PL
 	- importing nothing from XML::Generator
