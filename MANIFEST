@@ -1,4 +1,6 @@
 Changes
+eg/gdm2lonlat.pl
+eg/lonlat2gdm.pl
 Makefile.PL
 MANIFEST
 README
