@@ -31,12 +31,29 @@ SYNOPSIS
 
       $trail->write_lonlat( $fh2 );    # write as Longitude/Latitude file
 
+REVISION HISTORY
+    The following changes have been made since v0.21:
+
+    0.30   5 Mar 2004
+	- fixed typo in POD w/reversed latitute and logitude for add_point
+	- added read_utm
+	- added support for named points
+	- redid filehandle definitions
+	- minor code changes
+	- updated SEE ALSO section POD
+	* requires Geo::Coordinates::DecimalDegrees for conversions
+
 DESCRIPTION
     This module allows one to convert between Lowrance GPS trail files
-    (handled by the GDM16 application) and Latitude/Longitude files which
-    may be used by mapping applications.
+    (handled by the GDM16 application),  Latitude/Longitude files, and
+    UTM files which may be used by mapping applications.
 
     See the module documentation for more detailed information.
+
+SEE ALSO
+
+    GPS::Lowrance provides support for communicating directly with
+    Lowrance and Eagle GPS devices.
 
 AUTHOR
     Robert Rothenberg <rrwo at cpan.org>

@@ -4,9 +4,12 @@ use 5.006;
 use strict;
 
 use Carp::Assert;
+use Geo::Coordinates::DecimalDegrees;
 use Geo::Coordinates::UTM;
 
-our $VERSION = '0.21';
+our $VERSION = '0.30';
+
+use constant DEFAULT_DATUM => 23;       # WGS-84
 
 require FileHandle;
 
@@ -17,7 +20,7 @@ sub new
     my $self  = {
       TRAIL   => 1,
       COUNT   => 0,
-      POINTS  => [ ],
+      POINTS  => [], # latitude, longitude, name
       ERRORS  => 0,
     };
 
@@ -58,50 +61,18 @@ sub size
     return $self->{COUNT};
   }
 
-sub _minsec2dec
-
-  # Converts degrees, minutes, seconds and direction (ie, 40°52'27.9" N)
-  # into a decimal (40.874167).
-
-  {
-    my ($degrees, $minutes, $seconds, $direction) = @_;
-
-    return ( $degrees + ($minutes / 60) + ($seconds / 3600) ) * 
-      ( ($direction =~ m/^[SW]$/i) ? -1 : 1 );
-
-  }
-
-
-sub _dec2minsec
-
-  {
-    my ($decimal, $is_lon) = @_;
-
-    my ($degrees, $minutes, $seconds, $direction);
-
-    if ($is_lon) {
-      $direction = ($decimal < 0) ? "W" : "E";
-    } else {
-      $direction = ($decimal < 0) ? "S" : "N";
-    }
-
-    $decimal = abs( $decimal );
-    $degrees = int( $decimal );
-    $seconds = abs($decimal - $degrees) * 3600;
-    $minutes = int( $seconds / 60 );
-    $seconds -= ($minutes * 60);
-
-    return ($degrees, $minutes, $seconds, $direction);
-  }
 
 sub add_point
   {
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my ($latitude, $longitude) = @_;
+    my ($latitude, $longitude, $name) = @_;
 
-    push @{ $self->{POINTS} }, [ $latitude, $longitude ];
+    $name ||= ""; 
+    if ($name) { $name =~ /^\"(.*)\"$/; $name = $1; }
+
+    push @{ $self->{POINTS} }, [ $latitude, $longitude, $name ];
     ++$self->{COUNT};
   }
 
@@ -113,10 +84,8 @@ sub _parse_gdm16_line
       {
 	my $count = $1;
 
-	my ($latitude, $longitude) = (
-	  _minsec2dec( $3, $4, $6, $2 ),
-	  _minsec2dec( $8, $9, $11, $7)
-        );
+	my $latitude  = dms2decimal( (($2 eq "S")?-1:1)*$3, $4, $6 );
+	my $longitude = dms2decimal( (($7 eq "W")?-1:1)*$8, $9, $11 );
 
 	return ($count, $latitude, $longitude);
       }
@@ -131,7 +100,9 @@ sub read_gdm16
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift || \*STDIN;
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDIN; }
+
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     my $line = <$fh>;
@@ -171,7 +142,9 @@ sub read_latlon
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift || \*STDIN;
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDIN; }
+
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     my $line = <$fh>;
@@ -185,19 +158,71 @@ sub read_latlon
 	$self->errors( $. );
       }
 
-    while ( ($line = <$fh>) and ($line !~ m/^END/) )
+    # Obnoxious warning during tests:
+    #   Value of <HANDLE> construct can be "0"; test with defined"
+    # We already tested $fh and know it's ok.
+
+    while ( ($line = <$fh>) && ($line !~ m/^END/) )
       {
 	chomp( $line );
 
-	my ($latitude, $longitude) = split /,/, $line;
+	my ($latitude, $longitude, $name) = split /,/, $line;
 
-	if ( (defined $latitude) and (defined $longitude) )
+	if ( (defined $latitude) && (defined $longitude) )
 	  {
-	    $self->add_point( $latitude, $longitude );
+	    $self->add_point( $latitude, $longitude, $name );
 	  }
 	else
 	  {
 	    warn "Missing latitude or longitude in line";
+	    $self->errors( $. );
+	  }
+      }
+
+    return $self->{COUNT};
+  }
+
+sub read_utm
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDIN; }
+
+    # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+
+    my $line = <$fh>;
+
+    if ($line =~ m/^BEGIN LINE/)
+      {
+      }
+    else
+      {
+	warn "Missing BEGIN LINE header";
+	$self->errors( $. );
+      }
+
+    # Obnoxious warning during tests:
+    #   Value of <HANDLE> construct can be "0"; test with defined"
+    # We already tested $fh and know it's ok.
+
+    while ( ($line = <$fh>) && ($line !~ m/^END/) )
+      {
+	chomp( $line );
+
+	my ($zone, $easting, $northing, $name) = split /,/, $line;
+
+	if ( (defined $easting) && (defined $northing) )
+	  {
+	    my ($latitude,$longitude) =
+	      utm_to_latlon( DEFAULT_DATUM, $zone, $easting, $northing);
+
+	    $self->add_point( $latitude, $longitude, $name );
+	  }
+	else
+	  {
+	    warn "Missing easting or northing in line";
 	    $self->errors( $. );
 	  }
       }
@@ -210,11 +235,17 @@ sub _dec2gdm16
 
     my ($decimal, $is_lon) = @_;
 
-    my ($degrees, $minutes, $seconds, $direction) =
-      _dec2minsec( $decimal, $is_lon );
+    my ($degrees, $minutes, $seconds) = decimal2dms( $decimal );
+
+    my $direction;
+    if ($is_lon) {
+      $direction = ($degrees < 0) ? "W" : "E";
+    } else {
+      $direction = ($degrees < 0) ? "S" : "N";
+    }
 
     return sprintf("%s %02d\xb0%02d\'%2.1f\"",
-		   $direction, $degrees, $minutes, $seconds );
+		   $direction, abs($degrees), $minutes, $seconds );
   }
 
 sub write_gdm16
@@ -222,7 +253,9 @@ sub write_gdm16
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift || \*STDOUT;
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDIN; }
+
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "Plot Trail \x23", $self->trail_num(), "\n";
@@ -248,15 +281,26 @@ sub write_utm
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift || \*STDOUT;
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDIN; }
+
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
     foreach my $point (@{$self->{POINTS}})
       {
-	my ($zone, $east, $north) = latlon_to_utm( 23, @$point );
-	print $fh join(",", $zone, map { sprintf('%010.2f', $_) } $east, $north ), "\n";
+	my $name = $point->[2] || "";
+	if ($name) { $name = "\"$name\""; }
+
+	my ($zone, $east, $north) =
+	  latlon_to_utm( DEFAULT_DATUM, $point->[0], $point->[1] );
+
+	print $fh join(",",
+          $zone,
+	  (map { sprintf('%010.2f', $_) } $east, $north),
+          $name
+        ), "\n";
       }
 
     print $fh "END\n";
@@ -267,14 +311,21 @@ sub write_latlon
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift || \*STDOUT;
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDIN; }
+
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
     foreach my $point (@{$self->{POINTS}})
       {
-	print $fh join(",", map { sprintf('%1.6f', $_) } @$point), "\n";
+	my $name = $point->[2] || "";
+	if ($name) { $name = "\"$name\""; }
+
+	print $fh join(",", 
+          (map { sprintf('%1.6f', $_) } $point->[0], $point->[1]),
+          $name ), "\n";
       }
 
     print $fh "END\n";
@@ -336,8 +387,8 @@ There is no test suite to speak of. One will be added in a later version.
 =head1 DESCRIPTION
 
 This module allows one to convert between Lowrance GPS trail files
-(handled by the GDM16 application) and Latitude/Longitude files
-which may be used by mapping applications.
+(handled by their GDM16 application), Latitude/Longitude (or "Lat/Lon")
+files, and UTM files which may be used by mapping applications.
 
 =head2 Methods
 
@@ -365,10 +416,12 @@ although the C<GPS::Lowrance::Trail> module does not care.
 
 =item add_point
 
-  $trail->add_point( $longitude, $latitude );
+  $trail->add_point( $latitude, $longitude, $name );
 
-Add a point to the trail. C<$longitude> and C<$latitude> are in decimal
-form.
+Add a point to the trail.
+
+C<$latitude> and C<$longitude> are in decimal degrees form. C<$name>
+is an optional name for the point.
 
 =item size
 
@@ -393,7 +446,16 @@ Read a trail file in GDM16 format. Points are appended to the last point.
 
 =item read_latlon
 
+  $trail->read_latlon( $fh );
+
 Read a trail file in Latitude/Longitude file format. Points are appended
+to the last point.
+
+=item read_utm
+
+  $trail->read_utm( $fh );
+
+Read a trail file in UTM file format.  Points are appended
 to the last point.
 
 =item write_gdm16
@@ -434,18 +496,17 @@ Likewise, to import a trail file, open one of these files, "Select All"
 and "Copy" the file, load GDM16, select the "Trails" tab and choose 
 "Edit" and "Paste".
 
-=head1 CAVEATS
-
-This module comes from a quick and dirty hack adapted from a one-off
-script written for this purpose.  It appears to work, but has not been
-fully tested.
-
-More features and file formats may be added in the future.
-
 =head1 SEE ALSO
 
-C<GPS::Lowrance> implements higher-level functions to extract trails
-and other information directly from the GPS device.
+L<GPS::Lowrance> implements higher-level functions to extract trails
+and other information directly from the GPS device.  It uses this module.
+
+L<Geo::GPS::Data> is a GPS data management module.  However, it does
+not yet implement track logs.  When it does, this module may be
+modified to interface with it.
+
+L<Location::GeoTool> will convert coordinates to different formats and
+across different datums.
 
 =head1 AUTHOR
 

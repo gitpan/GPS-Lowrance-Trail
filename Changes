@@ -1,6 +1,15 @@
 Revision history for Perl extension GPS::Lowrance::Trail.  (Node: issues
 which may affect backward-compatability are notes with asterisks "*".)
 
+0.30   5 Mar 2004
+	- fixed typo in POD w/reversed latitute and logitude for add_point
+	- added read_utm
+	- added support for named points
+	- redid filehandle definitions
+	- minor code changes
+	- updated SEE ALSO section POD
+	* requires Geo::Coordinates::DecimalDegrees for conversions
+
 0.21   3 Mar 2004
 	- formatting was changed
 	- east/north columns were backwards

@@ -1,12 +1,13 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         GPS-Lowrance-Trail
-version:      0.21
+version:      0.30
 version_from: Trail.pm
 installdirs:  site
 requires:
     Carp::Assert:                  0
     FileHandle:                    0
+    Geo::Coordinates::DecimalDegrees: 0
     Geo::Coordinates::UTM:         0
 
 distribution_type: module

@@ -24,12 +24,12 @@ __END__
 
 use FileHandle;
 
-# my $fh = new FileHandle '<lowrance.txt';
-my $fh = new FileHandle '<lonlat.txt';
+my $fh = new FileHandle '<utm.txt';
+#my $fh = new FileHandle '<lonlat.txt';
 ok(defined $fh);
 
-# $trail->read_gdm16( $fh );
-$trail->read_lonlat( $fh );
+$trail->read_utm( $fh );
+# $trail->read_lonlat( $fh );
 
 ok(!$trail->errors);
 
@@ -41,6 +41,10 @@ ok($trail->size);
 my $fo = new FileHandle '>out.txt';
 ok(defined $fo);
 
-# $trail->write_lonlat( $fo );
-$trail->write_utm( $fo );
+# $trail->write_gdm16( \*STDERR );
+$trail->write_lonlat( \*STDERR );
+# $trail->write_utm( $fo );
+
+$fo->close;
+
 
