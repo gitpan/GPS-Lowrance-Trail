@@ -1,5 +1,9 @@
 Revision history for Perl extension GPS::Lowrance::Trail.
 
+0.13  27 Dec 2002
+	- handle seconds, not just minutes, in Lowrance Trail file
+	- other minor changes
+
 0.11   8 Feb 2002
 	- added example files in eg/ subdirectory
 

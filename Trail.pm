@@ -16,7 +16,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 @EXPORT = qw(
 );
 
-$VERSION = '0.11';
+$VERSION = '0.13';
 
 require FileHandle;
 
@@ -114,13 +114,13 @@ sub _parse_gdm16_line
   {
     my $line = shift;
 
-    if ($line =~ m/^(\d+)\.\s+Lat: ([NS]) (\d+)\xb0(\d+)\'(\d+\.\d)\"\s+Lon: ([EW]) (\d+)\xb0(\d+)\'(\d+\.\d)\"/)
+    if ($line =~ m/^(\d+)\.\s+Lat: ([NS]) (\d+)\xb0(\d+\.?\d*)\'((\d+\.?\d*)\")?\s+Lon: ([EW]) (\d+)\xb0(\d+\.?\d*)\'((\d+\.?\d*)\")?/)
       {
 	my $count = $1;
 
 	my ($latitude, $longitude) = (
-	  _minsec2dec( $3, $4, $5, $2 ),
-	  _minsec2dec( $7, $8, $9, $6)
+	  _minsec2dec( $3, $4, $6, $2 ),
+	  _minsec2dec( $8, $9, $11, $7)
         );
 
 	return ($count, $latitude, $longitude);
@@ -145,6 +145,7 @@ sub read_gdm16
       }
     else
       {
+	warn "Plot Trail format mismatch";
 	$self->errors( $. );
       }
 
@@ -160,6 +161,7 @@ sub read_gdm16
 	  }
 	else
 	  {
+	    warn "Missing latitude or longitude in line";
 	    $self->errors( $. );
 	  }
       }
@@ -180,6 +182,7 @@ sub read_lonlat
       }
     else
       {
+	warn "Missing BEGIN LINE header";
 	$self->errors( $. );
       }
 
@@ -195,6 +198,7 @@ sub read_lonlat
 	  }
 	else
 	  {
+	    warn "Missing latitude or longitude in line";
 	    $self->errors( $. );
 	  }
       }
