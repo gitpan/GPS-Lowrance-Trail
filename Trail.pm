@@ -6,8 +6,9 @@ use strict;
 use Carp::Assert;
 use Geo::Coordinates::DecimalDegrees;
 use Geo::Coordinates::UTM;
+use XML::Generator;
 
-our $VERSION = '0.30';
+our $VERSION = '0.40';
 
 use constant DEFAULT_DATUM => 23;       # WGS-84
 
@@ -22,10 +23,12 @@ sub new
       COUNT   => 0,
       POINTS  => [], # latitude, longitude, name
       ERRORS  => 0,
+      POINTER => 0,
     };
 
     bless $self, $class;
   }
+
 
 sub trail_num
   {
@@ -33,7 +36,7 @@ sub trail_num
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
     if (@_) {
-      # To-Do: We should check that trail number is between 1 and 4
+      # To-Do: We should check that trail number is between 1 and 4?
       $self->{TRAIL} = shift;
     } else {
       return $self->{TRAIL};
@@ -67,12 +70,15 @@ sub add_point
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my ($latitude, $longitude, $name) = @_;
+    my ($latitude, $longitude, $name, $date) = @_;
+
+    assert( ($latitude  >= -90) && ($latitude  <= 90) ), if DEBUG;
+    assert( ($longitude >= -90) && ($longitude <= 90) ), if DEBUG;
 
     $name ||= ""; 
-    if ($name) { $name =~ /^\"(.*)\"$/; $name = $1; }
+    if ($name) { $name =~ /^\"?(.*)\"?$/; $name = $1; }
 
-    push @{ $self->{POINTS} }, [ $latitude, $longitude, $name ];
+    push @{ $self->{POINTS} }, [ $latitude, $longitude, $name, $date ];
     ++$self->{COUNT};
   }
 
@@ -209,22 +215,21 @@ sub read_utm
 
     while ( ($line = <$fh>) && ($line !~ m/^END/) )
       {
-	chomp( $line );
+	if (substr($line, 0, 1) ne ";") {
+	  chomp( $line );
 
-	my ($zone, $easting, $northing, $name) = split /,/, $line;
+	  my ($zone, $easting, $northing, $name) = split /,/, $line;
 
-	if ( (defined $easting) && (defined $northing) )
-	  {
+	  if ( (defined $easting) && (defined $northing) ) {
 	    my ($latitude,$longitude) =
 	      utm_to_latlon( DEFAULT_DATUM, $zone, $easting, $northing);
 
 	    $self->add_point( $latitude, $longitude, $name );
-	  }
-	else
-	  {
+	  } else {
 	    warn "Missing easting or northing in line";
 	    $self->errors( $. );
 	  }
+	}
       }
 
     return $self->{COUNT};
@@ -244,7 +249,7 @@ sub _dec2gdm16
       $direction = ($degrees < 0) ? "S" : "N";
     }
 
-    return sprintf("%s %02d\xb0%02d\'%2.1f\"",
+    return sprintf("%s %02d\xb0%02d\'%04.1f\"",
 		   $direction, abs($degrees), $minutes, $seconds );
   }
 
@@ -254,7 +259,7 @@ sub write_gdm16
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
     my $fh   = shift;
-    unless (defined $fh) { $fh = \*STDIN; }
+    unless (defined $fh) { $fh = \*STDOUT; }
 
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
@@ -262,7 +267,8 @@ sub write_gdm16
 
     my $counter = 1;
 
-    foreach my $point (@{$self->{POINTS}})
+    $self->reset;
+    while (my $point = $self->next)
       {
 	print $fh
 	  $counter++,
@@ -282,26 +288,26 @@ sub write_utm
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
     my $fh   = shift;
-    unless (defined $fh) { $fh = \*STDIN; }
+    unless (defined $fh) { $fh = \*STDOUT; }
 
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
-    foreach my $point (@{$self->{POINTS}})
-      {
-	my $name = $point->[2] || "";
-	if ($name) { $name = "\"$name\""; }
+    $self->reset;
+    while (my $point = $self->next) {
+      my $name = $point->[2] || "";
+      if ($name) { $name = "\"$name\""; }
 
-	my ($zone, $east, $north) =
-	  latlon_to_utm( DEFAULT_DATUM, $point->[0], $point->[1] );
+      my ($zone, $east, $north) =
+        latlon_to_utm( DEFAULT_DATUM, $point->[0], $point->[1] );
 
-	print $fh join(",",
+      print $fh join(",",
           $zone,
 	  (map { sprintf('%010.2f', $_) } $east, $north),
           $name
         ), "\n";
-      }
+    }
 
     print $fh "END\n";
   }
@@ -312,24 +318,87 @@ sub write_latlon
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
     my $fh   = shift;
-    unless (defined $fh) { $fh = \*STDIN; }
+    unless (defined $fh) { $fh = \*STDOUT; }
 
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
-    foreach my $point (@{$self->{POINTS}})
-      {
-	my $name = $point->[2] || "";
-	if ($name) { $name = "\"$name\""; }
+    $self->reset;
+    while (my $point = $self->next) {
+      my $name = $point->[2] || "";
+      if ($name) { $name = "\"$name\""; }
 
-	print $fh join(",", 
-          (map { sprintf('%1.6f', $_) } $point->[0], $point->[1]),
-          $name ), "\n";
-      }
+      print $fh join(",", 
+        (map { sprintf('%1.6f', $_) } $point->[0], $point->[1]),
+        $name ), "\n";
+    }
 
     print $fh "END\n";
   }
+
+sub write_gpx
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    my $xml  = new XML::Generator(
+      pretty=>2,
+    );
+
+    my $fh   = shift;
+    unless (defined $fh) { $fh = \*STDOUT; }
+
+    my @gpx = ();
+
+    $self->reset;
+    while (my $point = $self->next) {
+      my $trkpt = [ {
+        lat => $point->[0],
+        lon => $point->[1],
+      }, undef ] ;
+      if (($point->[2]||"") ne "") {
+	push @$trkpt, $xml->name($point->[2]);
+      }
+      if (defined $point->[3]) {
+	my ($sec, $min, $hour, $mday, $mon, $year) = gmtime($point->[3]);
+	my $time = sprintf('%04d-%02d-%02dT%02d:%02d:%02dZ',
+         $year+1900, $mon+1, $mday, $hour, $min, $sec);
+	push @$trkpt, $xml->time($time);
+      }
+      push @gpx, $xml->trkpt( @$trkpt );
+
+    }
+
+    print $fh '<?xml version="1.0"?>', "\n";
+    print $fh $xml->gpx( { version => '1.0',
+                 creator => __PACKAGE__ . " $VERSION" },
+              $xml->trk( { number => $self->trail_num },
+              $xml->trkseg( @gpx ) ) );
+  }
+
+
+sub reset
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    unless ($self->size) { return; }
+
+    $self->{POINTER} = 0;
+  }
+
+sub next
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    unless ($self->size > $self->{POINTER}) {
+      return;
+    }
+    return $self->{POINTS}->[ $self->{POINTER}++ ];
+  }
+
 
 sub get_trail
   {
@@ -416,12 +485,14 @@ although the C<GPS::Lowrance::Trail> module does not care.
 
 =item add_point
 
-  $trail->add_point( $latitude, $longitude, $name );
+  $trail->add_point( $latitude, $longitude, $name, $date );
 
 Add a point to the trail.
 
 C<$latitude> and C<$longitude> are in decimal degrees form. C<$name>
-is an optional name for the point.
+and C<$date> are optional.
+
+C<$date> is the native Perl (Unix) time.
 
 =item size
 
@@ -460,26 +531,34 @@ to the last point.
 
 =item write_gdm16
 
+  $trail->write_gdm16( $fh );
+
 Write a trail file in GDM16 format.
 
 =item write_latlon
+
+  $trail->write_latlon( $fh );
 
 Write a trail file in Longitude/Latitude format.
 
 =item write_utm
 
+  $trail->write_utm( $fh );
+
 Write a tail file in UTM (Universal Tranverse Mercator) format.
 Assumes WGS-84 datum.
+
+=item write_gpx
+
+  $trail->write_gpx( $fh );
+
+Writes a trail file in TopoGrafix GPX format.
 
 =item errors
 
 Returns a value if there were errors when reading a file.
 
 =back
-
-=head2 Export
-
-None by default.
 
 =head2 Exporting Trail Files from GDM16
 
@@ -507,6 +586,14 @@ modified to interface with it.
 
 L<Location::GeoTool> will convert coordinates to different formats and
 across different datums.
+
+There is an open source application called I<GPSBabel>
+L<http://gpsbabel.sourceforge.net> which aims to convert between
+various GPS trail and waypoint formats, as well as do various forms of
+processing on the data.
+
+Information on TopoGrafix GPS format is available at
+L<http://www.topografix.com/gpx.asp>.
 
 =head1 AUTHOR
 

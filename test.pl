@@ -38,12 +38,14 @@ ok($trail->trail_num);
 
 ok($trail->size);
 
-my $fo = new FileHandle '>out.txt';
+my $fo = new FileHandle '>out.gpx';
 ok(defined $fo);
 
-# $trail->write_gdm16( \*STDERR );
-$trail->write_lonlat( \*STDERR );
-# $trail->write_utm( $fo );
+#$trail->write_gdm16( \*STDERR );
+#$trail->write_lonlat( \*STDERR );
+# $trail->write_utm( \*STDERR );
+
+$trail->write_gpx( $fo );
 
 $fo->close;
 

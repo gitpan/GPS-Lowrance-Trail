@@ -9,6 +9,7 @@ WriteMakefile(
       'FileHandle'            => 0,
       'Geo::Coordinates::UTM' => 0,
       'Geo::Coordinates::DecimalDegrees' => 0,
+      'XML::Generator'        => 0,
      },
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM => 'Trail.pm', # retrieve abstract from module

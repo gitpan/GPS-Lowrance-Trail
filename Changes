@@ -1,6 +1,18 @@
 Revision history for Perl extension GPS::Lowrance::Trail.  (Node: issues
 which may affect backward-compatability are notes with asterisks "*".)
 
+0.40  10 Mar 2004
+	- added write_gpx to create GPX format
+	* requires XML::Generator
+	- quotes in point names are optional
+	- minor fix in format of GDM16 output
+	- fixed: write_* methods wrote to STDIN instead of STDOUT as default
+	- modified code to use reset and next methods for output
+	- added reset and next methods to iterate over points
+	- ignore UTM file comments which begin with ';'
+	- added assertions to add_point for longitude and latitude values
+	- added support for date field to add_point
+
 0.30   5 Mar 2004
 	- fixed typo in POD w/reversed latitute and logitude for add_point
 	- added read_utm
