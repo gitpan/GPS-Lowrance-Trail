@@ -1,7 +1,15 @@
 Revision history for Perl extension GPS::Lowrance::Trail.  (Node: issues
 which may affect backward-compatability are notes with asterisks "*".)
 
+0.21   3 Mar 2004
+	- formatting was changed
+	- east/north columns were backwards
+	- zone was missing from UTM file format
+        - removed assertions that filehandles be used
+	- if filehandles not specified, defaults to STDIN or STDOUT
+
 0.20   2 Mar 2004
+	- no longer an Exporter
 	- added get_trail method
 	- added write_utm method
 	- added assertions

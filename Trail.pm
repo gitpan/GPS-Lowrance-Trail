@@ -6,20 +6,7 @@ use strict;
 use Carp::Assert;
 use Geo::Coordinates::UTM;
 
-# require Exporter;
-# use AutoLoader qw(AUTOLOAD);
-# use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-# @ISA = qw(Exporter);
-
-# %EXPORT_TAGS = ( 'all' => [ qw(
-# ) ] );
-
-# @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-# @EXPORT = qw(
-# );
-
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 require FileHandle;
 
@@ -35,7 +22,6 @@ sub new
     };
 
     bless $self, $class;
-
   }
 
 sub trail_num
@@ -145,8 +131,8 @@ sub read_gdm16
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift;
-    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+    my $fh   = shift || \*STDIN;
+    # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     my $line = <$fh>;
 
@@ -185,8 +171,8 @@ sub read_latlon
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift;
-    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+    my $fh   = shift || \*STDIN;
+    # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     my $line = <$fh>;
 
@@ -236,8 +222,8 @@ sub write_gdm16
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift;
-    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+    my $fh   = shift || \*STDOUT;
+    # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "Plot Trail \x23", $self->trail_num(), "\n";
 
@@ -262,15 +248,15 @@ sub write_utm
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift;
-    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+    my $fh   = shift || \*STDOUT;
+    # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
     foreach my $point (@{$self->{POINTS}})
       {
 	my ($zone, $east, $north) = latlon_to_utm( 23, @$point );
-	print $fh join(",", map { sprintf('%.10f', $_) } $north, $east ), "\n";
+	print $fh join(",", $zone, map { sprintf('%010.2f', $_) } $east, $north ), "\n";
       }
 
     print $fh "END\n";
@@ -281,14 +267,14 @@ sub write_latlon
     my $self = shift;
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
-    my $fh   = shift;
-    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+    my $fh   = shift || \*STDOUT;
+    # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
     foreach my $point (@{$self->{POINTS}})
       {
-	print $fh join(",", map { sprintf('%.10f', $_) } @$point), "\n";
+	print $fh join(",", map { sprintf('%1.6f', $_) } @$point), "\n";
       }
 
     print $fh "END\n";
@@ -422,8 +408,6 @@ Write a trail file in Longitude/Latitude format.
 
 Write a tail file in UTM (Universal Tranverse Mercator) format.
 Assumes WGS-84 datum.
-
-(This feature is experimental and may change.)
 
 =item errors
 

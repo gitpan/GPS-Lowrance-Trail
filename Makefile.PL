@@ -6,6 +6,7 @@ WriteMakefile(
     'VERSION_FROM'	=> 'Trail.pm', # finds $VERSION
     'PREREQ_PM'		=> {
       'Carp::Assert'          => 0,
+      'FileHandle'            => 0,
       'Geo::Coordinates::UTM' => 0,
      },
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005

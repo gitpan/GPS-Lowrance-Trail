@@ -1,7 +1,7 @@
 
 use Test;
 BEGIN { plan tests => 6 };
-use GPS::Lowrance::Trail 0.20;
+use GPS::Lowrance::Trail 0.21;
 ok(1);
 
 my $trail = new GPS::Lowrance::Trail;
@@ -42,5 +42,5 @@ my $fo = new FileHandle '>out.txt';
 ok(defined $fo);
 
 # $trail->write_lonlat( $fo );
-$trail->write_gdm16( $fo );
+$trail->write_utm( $fo );
 
