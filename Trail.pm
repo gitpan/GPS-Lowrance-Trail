@@ -1,22 +1,25 @@
 package GPS::Lowrance::Trail;
 
-use 5.00500;
+use 5.006;
 use strict;
 
-require Exporter;
-use AutoLoader qw(AUTOLOAD);
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-@ISA = qw(Exporter);
+use Carp::Assert;
+use Geo::Coordinates::UTM;
 
-%EXPORT_TAGS = ( 'all' => [ qw(
-) ] );
+# require Exporter;
+# use AutoLoader qw(AUTOLOAD);
+# use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+# @ISA = qw(Exporter);
 
-@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+# %EXPORT_TAGS = ( 'all' => [ qw(
+# ) ] );
 
-@EXPORT = qw(
-);
+# @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-$VERSION = '0.13';
+# @EXPORT = qw(
+# );
+
+our $VERSION = '0.20';
 
 require FileHandle;
 
@@ -38,6 +41,8 @@ sub new
 sub trail_num
   {
     my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
     if (@_) {
       # To-Do: We should check that trail number is between 1 and 4
       $self->{TRAIL} = shift;
@@ -49,6 +54,7 @@ sub trail_num
 sub errors
   {
     my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
     if (@_) {
       # To-Do: We should check that trail number is between 1 and 4
@@ -62,6 +68,7 @@ sub errors
 sub size
   {
     my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
     return $self->{COUNT};
   }
 
@@ -104,6 +111,8 @@ sub _dec2minsec
 sub add_point
   {
     my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
     my ($latitude, $longitude) = @_;
 
     push @{ $self->{POINTS} }, [ $latitude, $longitude ];
@@ -134,8 +143,10 @@ sub _parse_gdm16_line
 sub read_gdm16
   {
     my $self = shift;
-    my $fh   = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
+    my $fh   = shift;
+    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     my $line = <$fh>;
 
@@ -169,11 +180,13 @@ sub read_gdm16
     return $self->{COUNT};
   }
 
-sub read_lonlat
+sub read_latlon
   {
     my $self = shift;
-    my $fh   = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
+    my $fh   = shift;
+    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     my $line = <$fh>;
 
@@ -221,7 +234,10 @@ sub _dec2gdm16
 sub write_gdm16
   {
     my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
     my $fh   = shift;
+    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "Plot Trail \x23", $self->trail_num(), "\n";
 
@@ -241,10 +257,32 @@ sub write_gdm16
       }
   }
 
-sub write_lonlat
+sub write_utm
   {
     my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
     my $fh   = shift;
+    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
+
+    print $fh "BEGIN LINE\n";
+
+    foreach my $point (@{$self->{POINTS}})
+      {
+	my ($zone, $east, $north) = latlon_to_utm( 23, @$point );
+	print $fh join(",", map { sprintf('%.10f', $_) } $north, $east ), "\n";
+      }
+
+    print $fh "END\n";
+  }
+
+sub write_latlon
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    my $fh   = shift;
+    assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
     print $fh "BEGIN LINE\n";
 
@@ -256,6 +294,19 @@ sub write_lonlat
     print $fh "END\n";
   }
 
+sub get_trail
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    return $self->{POINTS};
+  }
+
+BEGIN {
+  no warnings;
+  *read_lonlat  = \&read_latlon;
+  *write_lonlat = \&write_latlon;
+}
 
 1;
 __END__
@@ -263,14 +314,14 @@ __END__
 
 =head1 NAME
 
-GPS::Lowrance::Trail - Convert between Lowrance GDM16 Trail Files
+GPS::Lowrance::Trail - Convert between GDM16 Trails and other formats
 
 =head1 REQUIREMENTS
 
-C<GPS::Lowrance::Trail> was written and tested on Perl 5.6.1, though it
-should work with v5.005.
+The following non-standard modules are used:
 
-It uses only standard modules.
+  Carp::Assert
+  Geo::Coordinates::UTM
 
 =head2 Installation
 
@@ -294,12 +345,12 @@ There is no test suite to speak of. One will be added in a later version.
 
   $trail->read_gdm16( $fh1 );      # read GDM16 Trail Exports
 
-  $trail->write_lonlat( $fh2 );    # write as Longitude/Latitude file
+  $trail->write_latlon( $fh2 );    # write as Longitude/Latitude file
 
 =head1 DESCRIPTION
 
 This module allows one to convert between Lowrance GPS trail files
-(handled by the GDM16 application) and Longitude/Lattitude files
+(handled by the GDM16 application) and Latitude/Longitude files
 which may be used by mapping applications.
 
 =head2 Methods
@@ -339,6 +390,13 @@ form.
 
 Returns the number of points on the trail.
 
+=item get_trail
+
+  my $array_ref = $trail->get_trail;
+
+Returns a reference to an array of all trail points (where each point
+is an array reference to the latitude and longitude).
+
 =item read_gdm16
 
   my $fh = FileHandle "mytrail.txt";
@@ -347,18 +405,25 @@ Returns the number of points on the trail.
 
 Read a trail file in GDM16 format. Points are appended to the last point.
 
-=item read_lonlat
+=item read_latlon
 
-Read a trail file in Longitude/Latitude file format. Points are appended
+Read a trail file in Latitude/Longitude file format. Points are appended
 to the last point.
 
 =item write_gdm16
 
 Write a trail file in GDM16 format.
 
-=item write_lonlat
+=item write_latlon
 
 Write a trail file in Longitude/Latitude format.
+
+=item write_utm
+
+Write a tail file in UTM (Universal Tranverse Mercator) format.
+Assumes WGS-84 datum.
+
+(This feature is experimental and may change.)
 
 =item errors
 
@@ -372,10 +437,12 @@ None by default.
 
 =head2 Exporting Trail Files from GDM16
 
-Trail data can be extracted from the GDM16 utility (which is distributed
-by Lowrance at http://www.lowrance.com). To do so, choose the "Trails"
-tab, select "Edit" and then "Copy", then open your favorite text editor
-and paste from the clipboard.
+Trail data can be extracted from the GDM16 utility (which is
+distributed by Lowrance at L<http://www.lowrance.com>) or Eagle at
+L<http://www.eaglegps.com>.
+
+To do so, choose the "Trails" tab, select "Edit" and then "Copy", then
+open your favorite text editor and paste from the clipboard.
 
 What you have is the file format which this Perl module processes.
 
@@ -391,14 +458,26 @@ fully tested.
 
 More features and file formats may be added in the future.
 
+=head1 SEE ALSO
+
+C<GPS::Lowrance> implements higher-level functions to extract trails
+and other information directly from the GPS device.
+
 =head1 AUTHOR
 
-Robert Rothenberg <rrwo@cpan.org>
+Robert Rothenberg <rrwo at cpan.org>
 
-=head1 LICENSE
+=head2 Suggestions and Bug Reporting
 
-Copyright (c) 2002 Robert Rothenberg. All rights reserved.
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Feedback is always welcome.  Please report any bugs using the CPAN
+Request Tracker at L<http://rt.cpan.org>.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2002,2004 by Robert Rothenberg <rrwo at cpan.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.2 or,
+at your option, any later version of Perl 5 you may have available.
 
 =cut

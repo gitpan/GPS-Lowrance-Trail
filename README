@@ -2,10 +2,10 @@ NAME
     GPS::Lowrance::Trail - Convert between Lowrance GDM16 Trail Files
 
 REQUIREMENTS
-    "GPS::Lowrance::Trail" was written and tested on Perl 5.6.1, though it
-    should work with v5.005.
+    It uses the following non-standard modules:
 
-    It uses only standard modules.
+     Carp::Assert
+     Geo::Coordinates::UTM
 
   Installation
 
@@ -33,22 +33,16 @@ SYNOPSIS
 
 DESCRIPTION
     This module allows one to convert between Lowrance GPS trail files
-    (handled by the GDM16 application) and Longitude/Lattitude files which
+    (handled by the GDM16 application) and Latitude/Longitude files which
     may be used by mapping applications.
 
-
-CAVEATS
-    This module comes from a quick and dirty hack adapted from a one-off
-    script written for this purpose. It appears to work, but has not been
-    fully tested.
-
-    More features and file formats may be added in the future.
+    See the module documentation for more detailed information.
 
 AUTHOR
-    Robert Rothenberg <rrwo@cpan.org>
+    Robert Rothenberg <rrwo at cpan.org>
 
 LICENSE
-    Copyright (c) 2002 Robert Rothenberg. All rights reserved. This program
-    is free software; you can redistribute it and/or modify it under the
-    same terms as Perl itself.
+    Copyright (c) 2002, 2004 Robert Rothenberg. All rights
+    reserved. This program is free software; you can redistribute it
+    and/or modify it under the same terms as Perl itself.
 

@@ -4,8 +4,11 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'		=> 'GPS::Lowrance::Trail',
     'VERSION_FROM'	=> 'Trail.pm', # finds $VERSION
-    'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
+    'PREREQ_PM'		=> {
+      'Carp::Assert'          => 0,
+      'Geo::Coordinates::UTM' => 0,
+     },
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM => 'Trail.pm', # retrieve abstract from module
-       AUTHOR     => 'A. U. Thor <a.u.thor@a.galaxy.far.far.away>') : ()),
+       AUTHOR     => 'Robert Rothenberg <rrwo at cpan.org>') : ()),
 );

@@ -1,4 +1,18 @@
-Revision history for Perl extension GPS::Lowrance::Trail.
+Revision history for Perl extension GPS::Lowrance::Trail.  (Node: issues
+which may affect backward-compatability are notes with asterisks "*".)
+
+0.20   2 Mar 2004
+	- added get_trail method
+	- added write_utm method
+	- added assertions
+	* requires Carp::Assert and Geo::Coordinates::UTM
+	- corrected (some) typos in POD
+	- corrected typo in Makefile.PL
+	* read_lonlat and write_lonlat have been renamed read_latlon and
+	  write_latlon (although aliases have been made for backward
+	  compatability)
+	* changed required to use 5.006 to be in sync with GPS::Lowrance
+	  module requirements.
 
 0.13  27 Dec 2002
 	- handle seconds, not just minutes, in Lowrance Trail file
