@@ -6,9 +6,9 @@ use strict;
 use Carp::Assert;
 use Geo::Coordinates::DecimalDegrees;
 use Geo::Coordinates::UTM;
-use XML::Generator;
+use XML::Generator qw();
 
-our $VERSION = '0.41';
+our $VERSION = '0.42';
 
 use constant DEFAULT_DATUM => 23;       # WGS-84
 

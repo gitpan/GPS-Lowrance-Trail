@@ -1,3 +1,4 @@
+Build.PL
 Changes
 eg/gdm2lonlat.pl
 eg/lonlat2gdm.pl
@@ -5,5 +6,5 @@ Makefile.PL
 MANIFEST
 README
 test.pl
-Trail.pm
-META.yml                                 Module meta-data (added by MakeMaker)
+lib/GPS/Lowrance/Trail.pm
+META.yml

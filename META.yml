@@ -1,15 +1,16 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         GPS-Lowrance-Trail
-version:      0.41
-version_from: Trail.pm
-installdirs:  site
+--- #YAML:1.0
+name: GPS-Lowrance-Trail
+version: 0.42
+author:
+  - Robert Rothenberg <rrwo at cpan.org>
+abstract: Convert between GDM16 Trails and other formats
+license: perl
 requires:
-    Carp::Assert:                  0
-    FileHandle:                    0
-    Geo::Coordinates::DecimalDegrees: 0
-    Geo::Coordinates::UTM:         0
-    XML::Generator:                0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+  Carp::Assert: 0
+  FileHandle: 0
+  Geo::Coordinates::DecimalDegrees: 0
+  Geo::Coordinates::UTM: 0
+  XML::Generator: 0
+  perl: 5.6.1
+provides: {}
+generated_by: Module::Build version 0.24

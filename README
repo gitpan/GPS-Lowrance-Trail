@@ -32,14 +32,11 @@ SYNOPSIS
       $trail->write_lonlat( $fh2 );    # write as Longitude/Latitude file
 
 REVISION HISTORY
-    The following changes have been made since v0.40:
+    The following changes have been made since v0.41:
 
-    0.41  12 Mar 2004
-	- added configurable datum setting
-	- added missing module to POD's REQUIREMENTS section
-	- added rounding setting
-	- fixed comment typos
-	- added arguments to constructor
+    0.42  8 April 2004
+	- added Build.PL
+	- importing nothing from XML::Generator
 
 DESCRIPTION
     This module allows one to convert between Lowrance GPS trail files

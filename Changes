@@ -1,6 +1,10 @@
 Revision history for Perl extension GPS::Lowrance::Trail.  (Node: issues
 which may affect backward-compatability are notes with asterisks "*".)
 
+0.42  8 April 2004
+	- added Build.PL
+	- importing nothing from XML::Generator
+
 0.41  12 Mar 2004
 	- added configurable datum setting
 	- added missing module to POD's REQUIREMENTS section
