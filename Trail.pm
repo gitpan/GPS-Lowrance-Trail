@@ -8,7 +8,7 @@ use Geo::Coordinates::DecimalDegrees;
 use Geo::Coordinates::UTM;
 use XML::Generator;
 
-our $VERSION = '0.40';
+our $VERSION = '0.41';
 
 use constant DEFAULT_DATUM => 23;       # WGS-84
 
@@ -21,14 +21,61 @@ sub new
     my $self  = {
       TRAIL   => 1,
       COUNT   => 0,
-      POINTS  => [], # latitude, longitude, name
+      POINTS  => [], # latitude, longitude, name, date, symbol, wptnum
       ERRORS  => 0,
       POINTER => 0,
+      ROUND   => 1,  # round off values when output
+      DATUM   => DEFAULT_DATUM,
     };
 
+    my %ARG_METHODS = (
+       datum       => 'datum',
+       rounding    => 'rounding',
+       trail_num   => 'trail_num',
+       read_gdm16  => 'read_gdm16',
+       read_latlon => 'read_latlon',
+       read_utm    => 'read_utm',
+    );
+
     bless $self, $class;
+
+    my %args = @_;
+
+    foreach my $argname (keys %args) {
+      if ($ARG_METHODS{$argname}) {
+	$self->$argname( $args{$argname} );
+      } else {
+	die "unrecognized constructor argument ``$argname\'\'";
+      }
+    }
+
+    return $self;
   }
 
+
+sub datum {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    if (@_) {
+      # To-Do: We should check that trail number is between 1 and 4?
+      $self->{DATUM} = shift;
+    } else {
+      return $self->{DATUM};
+    }
+}
+
+sub rounding {
+    my $self = shift;
+    assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
+
+    if (@_) {
+      # To-Do: We should check that trail number is between 1 and 4?
+      $self->{ROUND} = shift;
+    } else {
+      return $self->{ROUND};
+    }
+}
 
 sub trail_num
   {
@@ -49,7 +96,6 @@ sub errors
     assert( UNIVERSAL::isa( $self, __PACKAGE__ ) ), if DEBUG;
 
     if (@_) {
-      # To-Do: We should check that trail number is between 1 and 4
       $self->{ERRORS} = shift;
     } else {
       return $self->{ERRORS};
@@ -263,6 +309,10 @@ sub write_gdm16
 
     # assert( UNIVERSAL::isa($fh, "FileHandle") ), if DEBUG;
 
+    if (!$self->rounding) {
+      warn "rounding setting will be ignored";
+    }
+
     print $fh "Plot Trail \x23", $self->trail_num(), "\n";
 
     my $counter = 1;
@@ -294,6 +344,10 @@ sub write_utm
 
     print $fh "BEGIN LINE\n";
 
+    my $round_code = ($self->rounding) ?
+      sub { return sprintf('%010.2f', shift); } :
+      sub { return shift; };
+
     $self->reset;
     while (my $point = $self->next) {
       my $name = $point->[2] || "";
@@ -304,7 +358,7 @@ sub write_utm
 
       print $fh join(",",
           $zone,
-	  (map { sprintf('%010.2f', $_) } $east, $north),
+	  (map { &{$round_code}($_) } $east, $north),
           $name
         ), "\n";
     }
@@ -324,13 +378,17 @@ sub write_latlon
 
     print $fh "BEGIN LINE\n";
 
+    my $round_code = ($self->rounding) ?
+      sub { return sprintf('%1.6f', shift); } :
+      sub { return shift; };
+
     $self->reset;
     while (my $point = $self->next) {
       my $name = $point->[2] || "";
       if ($name) { $name = "\"$name\""; }
 
       print $fh join(",", 
-        (map { sprintf('%1.6f', $_) } $point->[0], $point->[1]),
+        (map { &{$round_code}($_) } $point->[0], $point->[1]),
         $name ), "\n";
     }
 
@@ -348,6 +406,10 @@ sub write_gpx
 
     my $fh   = shift;
     unless (defined $fh) { $fh = \*STDOUT; }
+
+    if ($self->rounding) {
+      warn "rounding setting will be ignored";
+    }
 
     my @gpx = ();
 
@@ -428,6 +490,7 @@ The following non-standard modules are used:
 
   Carp::Assert
   Geo::Coordinates::UTM
+  XML::Generator
 
 =head2 Installation
 
@@ -456,8 +519,9 @@ There is no test suite to speak of. One will be added in a later version.
 =head1 DESCRIPTION
 
 This module allows one to convert between Lowrance GPS trail files
-(handled by their GDM16 application), Latitude/Longitude (or "Lat/Lon")
-files, and UTM files which may be used by mapping applications.
+(handled by their GDM16 application), Latitude/Longitude (or
+"Lat/Lon") files, UTM, and GPX files which may be used by mapping
+applications.
 
 =head2 Methods
 
@@ -467,9 +531,21 @@ The following methods are implemented.
 
 =item new
 
-  my $trail = new GPS::Lowrance::Trail;
+  $trail = new GPS::Lowrance::Trail;
 
 Generates a new instance of the object.
+
+As of v0.41, optional configuration parameters can be added:
+
+  $trail = new GPS::Lowrance::Trail(
+    trail_num => 2,
+    rounding  => 0,
+    read_utm  => $fh,
+    datum     => 23,
+  );
+
+The L</trail_num> and L</rounding> parameters can be configured. Also,
+the read methods can be specified to read a file.
 
 =item trail_num
 
@@ -522,12 +598,33 @@ Read a trail file in GDM16 format. Points are appended to the last point.
 Read a trail file in Latitude/Longitude file format. Points are appended
 to the last point.
 
+=item datum
+
+  $trail->datum(23);
+
+  $datum = $trail->datum;
+
+Accessor for the datum value used by the L</read_utm> and
+L</write_utm> methods.  See L<Geo::Coordinates::UTM> for values.
+
 =item read_utm
 
   $trail->read_utm( $fh );
 
 Read a trail file in UTM file format.  Points are appended
 to the last point.
+
+=item rounding
+
+  $trail->rounding(0);
+
+  if ($trail->rounding) { ... }
+
+Controls the decimal rounding setting for output. (Default is 1).  If
+this is set, output for L</write_latlon> and L</write_utm> methods is
+rounded off.
+
+The setting is ignored by L</write_gdm16> and L</write_gpx> methods.
 
 =item write_gdm16
 

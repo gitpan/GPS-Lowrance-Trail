@@ -1,11 +1,16 @@
 
 use Test;
-BEGIN { plan tests => 6 };
-use GPS::Lowrance::Trail 0.21;
+BEGIN { plan tests => 8 };
+use GPS::Lowrance::Trail 0.41;
 ok(1);
 
-my $trail = new GPS::Lowrance::Trail;
+my $trail = new GPS::Lowrance::Trail( rounding => 0 );
 ok(defined $trail);
+
+ok( !$trail->rounding );
+
+$trail->rounding(1);
+ok( $trail->rounding );
 
 ok( $trail->size == 0 );
 
@@ -24,11 +29,13 @@ __END__
 
 use FileHandle;
 
+
 my $fh = new FileHandle '<utm.txt';
 #my $fh = new FileHandle '<lonlat.txt';
 ok(defined $fh);
 
-$trail->read_utm( $fh );
+$trail = new GPS::Lowrance::Trail( rounding => 1, read_utm=>$fh );
+# $trail->read_utm( $fh );
 # $trail->read_lonlat( $fh );
 
 ok(!$trail->errors);
@@ -42,10 +49,10 @@ my $fo = new FileHandle '>out.gpx';
 ok(defined $fo);
 
 #$trail->write_gdm16( \*STDERR );
-#$trail->write_lonlat( \*STDERR );
-# $trail->write_utm( \*STDERR );
+# $trail->write_lonlat( \*STDERR );
+$trail->write_utm( \*STDERR );
 
-$trail->write_gpx( $fo );
+# $trail->write_gpx( $fo );
 
 $fo->close;
 

@@ -32,19 +32,14 @@ SYNOPSIS
       $trail->write_lonlat( $fh2 );    # write as Longitude/Latitude file
 
 REVISION HISTORY
-    The following changes have been made since v0.30:
+    The following changes have been made since v0.40:
 
-    0.40  10 Mar 2004
-	- added write_gpx to create GPX format
-	* requires XML::Generator
-	- quotes in point names are optional
-	- minor fix in format of GDM16 output
-	- fixed: write_* methods wrote to STDIN instead of STDOUT as default
-	- modified code to use reset and next methods for output
-	- added reset and next methods to iterate over points
-	- ignore UTM file comments which begin with ';'
-	- added assertions to add_point for longitude and latitude values
-	- added support for date field to add_point
+    0.41  12 Mar 2004
+	- added configurable datum setting
+	- added missing module to POD's REQUIREMENTS section
+	- added rounding setting
+	- fixed comment typos
+	- added arguments to constructor
 
 DESCRIPTION
     This module allows one to convert between Lowrance GPS trail files
